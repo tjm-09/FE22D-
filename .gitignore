@@ -1,0 +1,34 @@
+# Unity
+/Library/
+/Temp/
+/Obj/
+/Build/
+/Builds/
+/Logs/
+/UserSettings/
+
+# Visual Studio
+*.csproj
+*.unityproj
+*.sln
+*.suo
+*.user
+*.userprefs
+*.pidb
+*.booproj
+.vs/
+
+# Unity meta files
+*.pidb.meta
+
+# Build outputs
+*.apk
+*.unitypackage
+
+# Database files
+*.db
+*.sqlite
+
+# OS junk
+.DS_Store
+Thumbs.db
