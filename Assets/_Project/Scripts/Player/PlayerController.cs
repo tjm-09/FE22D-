@@ -3,16 +3,19 @@
 public class PlayerMovement : MonoBehaviour
 {
     // Movement
-    private float horizontal;
-    private float speed = 8f;
-    private float jumpingPower = 16f;
-    private bool isFacingRight = true;
-
-    // Wall slide
+    private float Horizontal;
+    public float speed = 8f;
+    public float jump = 10f;
+    private bool isJumping = false;
+    private bool isGrounded;
+    private Rigidbody2D rb;
     private bool isWallSliding;
-    private float wallSlidingSpeed = 2f;
-
-    // Wall jump
+    public float wallSlidingSpeed = 2f;
+    public Transform wallCheck;
+    public LayerMask wallLayer;
+    private bool isFacingRight = true;
+    public Transform groundCheck;
+    public LayerMask groundLayer;
     private bool isWallJumping;
     private float wallJumpingDirection;
     private float wallJumpingTime = 0.2f;
@@ -20,124 +23,83 @@ public class PlayerMovement : MonoBehaviour
     private float wallJumpingDuration = 0.4f;
     private Vector2 wallJumpingPower = new Vector2(8f, 16f);
 
-    [Header("References")]
-    [SerializeField] private Rigidbody2D rb;
-    [SerializeField] private Transform groundCheck;
-    [SerializeField] private LayerMask groundLayer;
-    [SerializeField] private Transform wallCheckRight;
-    [SerializeField] private Transform wallCheckLeft;
-    [SerializeField] private LayerMask wallLayer;
 
     private void Awake()
     {
-        // Auto-get Rigidbody2D
         if (rb == null)
             rb = GetComponent<Rigidbody2D>();
-
-        // Auto-find GroundCheck if not assigned
-        if (groundCheck == null)
-            groundCheck = transform.Find("GroundCheck");
-
-        // Auto-find wall checks if not assigned
-        if (wallCheckRight == null)
-            wallCheckRight = transform.Find("WallCheckRight");
-        if (wallCheckLeft == null)
-            wallCheckLeft = transform.Find("WallCheckLeft");
-
-        // Error checks
-        if (groundCheck == null)
-            Debug.LogError("GroundCheck not assigned or found!");
-        if (wallCheckRight == null)
-            Debug.LogError("WallCheckRight not assigned or found!");
-        if (wallCheckLeft == null)
-            Debug.LogError("WallCheckLeft not assigned or found!");
     }
+
+
 
     private void Update()
     {
-        horizontal = Input.GetAxisRaw("Horizontal");
-
-        // Jump from ground
-        if ((Input.GetButtonDown("Jump") || Input.GetKeyDown(KeyCode.UpArrow)) && IsGrounded())
+        if (isGrounded)
         {
-            rb.linearVelocity = new Vector2(rb.linearVelocity.x, jumpingPower);
+            Debug.Log("Grounded");
         }
-
-        // Variable jump height (release jump early = shorter jump)
-        if (Input.GetButtonUp("Jump") && rb.linearVelocity.y > 0f)
+        if (isJumping)
         {
-            rb.linearVelocity = new Vector2(rb.linearVelocity.x, rb.linearVelocity.y * 0.5f);
+            Debug.Log("Jumping");
+        }
+        Horizontal = Input.GetAxisRaw("Horizontal");
+        rb.linearVelocity = new Vector2(Horizontal * speed, rb.linearVelocity.y);
+        // Jump from ground
+        if ((Input.GetButtonDown("Jump") || Input.GetKeyDown(KeyCode.UpArrow)) && isJumping == false)
+        {
+            rb.linearVelocity = new Vector2(rb.linearVelocity.x, jump); //ts the jumping action
+            Debug.Log("Jump");
+            isJumping = true;
         }
 
         WallSlide();
         WallJump();
-
         if (!isWallJumping)
         {
             Flip();
         }
     }
-
     private void FixedUpdate()
     {
         if (!isWallJumping)
         {
-            rb.linearVelocity = new Vector2(horizontal * speed, rb.linearVelocity.y);
+            rb.linearVelocity = new Vector2(Horizontal * speed, rb.linearVelocity.y);
         }
     }
 
+    private void OnCollisionEnter2D(Collision2D other)
+    {
+        if (other.gameObject.CompareTag("Ground"))
+        {
+            isJumping = false;
+        }
+    }
     private bool IsGrounded()
     {
-        if (groundCheck == null) return false;
         return Physics2D.OverlapCircle(groundCheck.position, 0.2f, groundLayer);
     }
-
     private bool IsWalled()
     {
-        // Check both sides
-        bool wallRight = false;
-        bool wallLeft = false;
-
-        if (wallCheckRight != null)
-            wallRight = Physics2D.OverlapCircle(wallCheckRight.position, 0.2f, wallLayer);
-        if (wallCheckLeft != null)
-            wallLeft = Physics2D.OverlapCircle(wallCheckLeft.position, 0.2f, wallLayer);
-
-        return wallRight || wallLeft;
+        return Physics2D.OverlapCircle(wallCheck.position, 0.2f, wallLayer);
     }
-
-    // Returns 1 if wall is on left, -1 if wall is on right
-    private int GetWallDirection()
-    {
-        if (wallCheckRight != null && Physics2D.OverlapCircle(wallCheckRight.position, 0.2f, wallLayer))
-            return -1;  // Wall on right → jump left
-        if (wallCheckLeft != null && Physics2D.OverlapCircle(wallCheckLeft.position, 0.2f, wallLayer))
-            return 1;   // Wall on left → jump right
-        return 0;
-    }
-
     private void WallSlide()
     {
-        if (IsWalled() && !IsGrounded() && horizontal != 0f)
+        if (IsWalled() && isJumping && Horizontal != 0f)
         {
             isWallSliding = true;
-            rb.linearVelocity = new Vector2(
-                rb.linearVelocity.x,
-                Mathf.Clamp(rb.linearVelocity.y, -wallSlidingSpeed, float.MaxValue)
-            );
+            rb.linearVelocity = new Vector2(rb.linearVelocity.x, Mathf.Clamp(rb.linearVelocity.y, -wallSlidingSpeed, float.MaxValue));
         }
         else
         {
             isWallSliding = false;
         }
     }
-
     private void WallJump()
     {
         if (isWallSliding)
         {
             isWallJumping = false;
-            wallJumpingDirection = GetWallDirection();  // Use the side with the wall
+            wallJumpingDirection = -transform.localScale.x;
             wallJumpingCounter = wallJumpingTime;
 
             CancelInvoke(nameof(StopWallJumping));
@@ -146,21 +108,13 @@ public class PlayerMovement : MonoBehaviour
         {
             wallJumpingCounter -= Time.deltaTime;
         }
-
-        if (Input.GetButtonDown("Jump") && wallJumpingCounter > 0f)
+        if ((Input.GetButtonDown("Jump") || Input.GetKeyDown(KeyCode.UpArrow)) && wallJumpingCounter > 0f)
         {
             isWallJumping = true;
-
-            // Jump AWAY from the wall
-            rb.linearVelocity = new Vector2(
-                wallJumpingDirection * wallJumpingPower.x,
-                wallJumpingPower.y
-            );
+            rb.linearVelocity = new Vector2(wallJumpingDirection * wallJumpingPower.x, wallJumpingPower.y);
             wallJumpingCounter = 0f;
 
-            // Flip sprite if needed
-            if ((wallJumpingDirection == 1 && !isFacingRight) ||
-                (wallJumpingDirection == -1 && isFacingRight))
+            if (transform.localScale.x != wallJumpingDirection)
             {
                 isFacingRight = !isFacingRight;
                 Vector3 localScale = transform.localScale;
@@ -170,8 +124,10 @@ public class PlayerMovement : MonoBehaviour
 
             Invoke(nameof(StopWallJumping), wallJumpingDuration);
         }
-    }
 
+
+
+    }
     private void StopWallJumping()
     {
         isWallJumping = false;
@@ -179,7 +135,7 @@ public class PlayerMovement : MonoBehaviour
 
     private void Flip()
     {
-        if ((isFacingRight && horizontal < 0f) || (!isFacingRight && horizontal > 0f))
+        if (isFacingRight && Horizontal < 0f || !isFacingRight && Horizontal > 0f)
         {
             isFacingRight = !isFacingRight;
             Vector3 localScale = transform.localScale;
@@ -187,26 +143,13 @@ public class PlayerMovement : MonoBehaviour
             transform.localScale = localScale;
         }
     }
-
-    private void OnDrawGizmosSelected()
+    private enum MovementState
     {
-        // Ground check (green)
-        if (groundCheck != null)
-        {
-            Gizmos.color = Color.green;
-            Gizmos.DrawWireSphere(groundCheck.position, 0.2f);
-        }
-
-        // Wall checks (blue for right, red for left)
-        if (wallCheckRight != null)
-        {
-            Gizmos.color = Color.blue;
-            Gizmos.DrawWireSphere(wallCheckRight.position, 0.2f);
-        }
-        if (wallCheckLeft != null)
-        {
-            Gizmos.color = Color.red;
-            Gizmos.DrawWireSphere(wallCheckLeft.position, 0.2f);
-        }
+        running,
+        jumping,
+        idle,
+        grounded,
+        onWall,
+        onGround
     }
 }

@@ -2,13 +2,12 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using System.Collections;
 
-/// <summary>
-/// Handles all scene loading with smooth transitions and asynchronous loading.
-/// Singleton pattern ensures only one instance exists.
-/// </summary>
+
+/// Handles all scene loading with smooth transitions and asynchronous loading
+/// Singleton pattern ensures only one instance exists
 public class SceneLoader : MonoBehaviour
 {
-    // ----- SINGLETON -----
+    //SINGLETON
     private static SceneLoader instance;
     public static SceneLoader Instance
     {
@@ -28,7 +27,7 @@ public class SceneLoader : MonoBehaviour
         }
     }
 
-    // ----- PROPERTIES -----
+    //PROPERTIES
     [Header("Transition Settings")]
     [SerializeField] private Animator transitionAnimator;
     [SerializeField] private float transitionTime = 1f;
